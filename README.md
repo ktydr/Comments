@@ -1,2 +1,2 @@
 # Comments
-Automatic comments evaluation
+Automatic comments evaluation using training data
