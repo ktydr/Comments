@@ -10,7 +10,7 @@ def main():
     manager.learn_from_comments(comments)
 
     manager.test_comments(test_comments)
-    print('hejfdksl')
+    
     """
     while True:
         manager.input_comment()
