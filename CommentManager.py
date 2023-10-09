@@ -1,4 +1,4 @@
-
+import numpy as np
 
 class CommentManager:
 
@@ -9,4 +9,7 @@ class CommentManager:
         pass
 
     def test_comments(self, comments):
+        pass
+
+    def parse_comment(comment: str) -> np.ndarray[str]:
         pass
