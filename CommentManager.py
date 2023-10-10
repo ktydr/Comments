@@ -1,9 +1,11 @@
-import pandas as pd
+import re
+from typing import Optional
 
+import pandas as pd
+import numpy as np
 
 from Mark import Mark
-import numpy as np
-import re
+
 
 
 class CommentManager:
@@ -26,10 +28,17 @@ class CommentManager:
         self.tokenize_words(words)
 
     @staticmethod 
-    def parse_comment(comment: str) -> list[str]:
+    def parse_comment(comment: str) -> (list[str], Optional[Mark]):
         words = re.findall(r"[\wäöüß]+", comment.lower())
-        mark_name = words.pop()
-        return words, mark_name
+        try:
+            mark = Mark(words[-1])
+            words.pop()
+            return words, mark
+        except:
+            return words, None
 
     def tokenize_words(self, words: list[str]) -> None:
+        pass
+
+    def test_comments(self, comments):
         pass
