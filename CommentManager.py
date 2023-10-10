@@ -12,8 +12,7 @@ class CommentManager:
 
     @staticmethod 
     def parse_comment(comment: str) -> list[str]:
-        comment = "The way 54 is too hard, but We will overwelm it!"
-        words = re.findall(r"\w+", comment.lower())
+        words = re.findall(r"[\wäöüß]+", comment.lower())
         mark_name = words.pop()
         return words, mark_name
 
