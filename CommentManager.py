@@ -37,8 +37,21 @@ class CommentManager:
         except:
             return words, None
 
-    def tokenize_words(self, words: list[str]) -> None:
-        pass
+    def tokenize_words(self, words: list[str], min_common_prefix: int=2, min_dice_coef: float=0.5) -> None:
+        self.tokens = {}
+
+        words.sort()
+        token_id = 1
+        for idx, word in enumerate(words):
+            for j in range(idx):
+                prev_word = words[j]
+                if word[:min_common_prefix] == prev_word[:min_common_prefix] and \
+                   (word.startswith(prev_word) or CommentManager.dice(word, prev_word) >= min_dice_coef):
+                        self.tokens[word] = self.tokens[prev_word]
+            if word not in self.tokens:
+                self.tokens[word] = token_id
+                token_id += 1
+        return     
 
     def test_comments(self, comments):
         pass
