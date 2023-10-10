@@ -5,11 +5,9 @@ class CommentManager:
     def __init__(self):
         pass
 
-    def learn_from_comments(self, comments):
+    @staticmethod 
+    def parse_comment(comment: str) -> list[str]:
         pass
 
-    def test_comments(self, comments):
-        pass
-
-    def parse_comment(comment: str) -> np.ndarray[str]:
+    def tokenize_words(self, words: list[str]) -> None:
         pass
