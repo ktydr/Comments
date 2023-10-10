@@ -16,7 +16,19 @@ def main():
     """
      
 def fetch_comments():
-    return ([], [])
+    # fetch training comments
+    training_file = open('trainingComments.txt', 'r')
+    training_comments = training_file.readlines()
+    training_comments = [comment for comment in training_comments if comment != '\n']
+    training_file.close()
+
+    # fetch test comments
+    test_file = open('testComments.txt', 'r')
+    test_comments = test_file.readlines()
+    test_comments = [comment for comment in test_comments if comment != '\n']
+    test_comments.close()
+
+    return (training_comments, test_comments)
 
 
 
