@@ -17,7 +17,8 @@ class CommentManager:
             "tokenize": {
                 "min_common_prefix": 2,
                 "min_dice_coef": 0.7
-            }
+            },
+            "possibility_factor": 1000
         }
 
     def learn_from_comments(self, comments: list[str]) -> None:
@@ -34,41 +35,35 @@ class CommentManager:
         appeared = {}
         words_amount = 0
         for words, mark in parse_results:
+            words_amount += len(words)
             for word in words:
                 token = self.tokens[word]
                 if (token, mark) not in appeared:
                     appeared[(token, mark)] = 0
                 appeared[(token, mark)] += 1
                 mark_amount[mark.value] += 1
-                words_amount += 1
-        
-        # init data with mark_amount
-        mark_amount["index"] = "all"
-        data = [mark_amount]   
 
-
+        # create the possibility table
+        possibility_factor = self.config["possibility_factor"]
+        token_values = list(set(self.tokens.values()))
+        table_index = ['all'] + token_values
         for mark in iter(Mark):
             mark_amount[mark.value] /= words_amount
-        token_values = list(set(self.tokens.values()))
-        for token in token_values:
-            sum = 0
-            for mark in iter(Mark):
+        table_data = {}
+        
+        for mark in iter(Mark):
+            table_data[mark.value] = [mark_amount[mark.value]]
+            for token in token_values:
                 if (token, mark) not in appeared:
                     appeared[(token, mark)] = 0
-                sum += appeared[(token, mark)]
-            
-            row = {"index": token}
-            for mark in iter(Mark):
-                try:
-                    row[mark.value] = appeared[(token, mark)] / sum
-                except:
-                    row[mark.value] = 0
-            
-            data.append(row)
+                # laplace smoothing
+                p = (appeared[(token, mark)] + 1) / (mark_amount[mark.value] + len(token_values))
+                p *= possibility_factor
+                table_data[mark.value].append(p)
 
-
-        self.possibility_table = pd.DataFrame(data).set_index(keys="index", drop=True)
+        self.possibility_table = pd.DataFrame(data=table_data, index=table_index)
         print(self.possibility_table)
+
 
     def create_tokens(self, words: list[list[str]]) -> None:
         all_words = []
@@ -130,7 +125,7 @@ class CommentManager:
             result = 0
         return result
     
-    def test_comments(self, comments):
+    def comments_predict(self, comments):
         for comment in comments:
             assume = {}
             for mark in iter(Mark):
@@ -138,6 +133,8 @@ class CommentManager:
             words, mark = self._parse_comment(comment)
             for word in words: 
                 for mark in iter(Mark):
+                    if word not in self.tokens:
+                        continue
                     assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
             
             best_mark = max(assume, key=assume.get)

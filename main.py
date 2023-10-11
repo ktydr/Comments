@@ -8,7 +8,7 @@ def main():
 
     manager.learn_from_comments(training_comments)
 
-    manager.test_comments(test_comments)
+    manager.comments_predict(test_comments)
     
     """
     while True:
