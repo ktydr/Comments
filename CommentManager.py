@@ -21,20 +21,34 @@ class CommentManager:
         }
 
     def learn_from_comments(self, comments: list[str]) -> None:
-        self.create_tokens(comments)
-        self.create_possibility_table(comments)
+        parse_results = [self._parse_comment(comment) for comment in comments]
+        self.create_tokens([words for words, mark in parse_results])
+        self.create_possibility_table(parse_results)
 
-    def create_possibility_table(self, comments) -> None:
+    def create_possibility_table(self, parse_results) -> None:
+        # init mark_amount dictionary
+        mark_amount = {}
+        for mark in iter(Mark):
+            mark_amount[mark.value] = 0
+
         appeared = {}
-        for comment in comments:
-            words, mark = self._parse_comment(comment)
+        words_amount = 0
+        for words, mark in parse_results:
             for word in words:
                 token = self.tokens[word]
                 if (token, mark) not in appeared:
                     appeared[(token, mark)] = 0
                 appeared[(token, mark)] += 1
+                mark_amount[mark.value] += 1
+                words_amount += 1
         
-        data = []    
+        # init data with mark_amount
+        mark_amount["index"] = "all"
+        data = [mark_amount]   
+
+
+        for mark in iter(Mark):
+            mark_amount[mark.value] /= words_amount
         token_values = list(set(self.tokens.values()))
         for token in token_values:
             sum = 0
@@ -43,7 +57,7 @@ class CommentManager:
                     appeared[(token, mark)] = 0
                 sum += appeared[(token, mark)]
             
-            row = {}
+            row = {"index": token}
             for mark in iter(Mark):
                 try:
                     row[mark.value] = appeared[(token, mark)] / sum
@@ -51,15 +65,16 @@ class CommentManager:
                     row[mark.value] = 0
             
             data.append(row)
-            
-        self.possibility_table = pd.DataFrame(data=data, index=token_values)
 
 
-    def create_tokens(self, comments: list[str]) -> None:
-        words = list()
-        for comment in comments:
-            words += CommentManager._parse_comment(comment)[0]
-        self._tokenize_words(words)
+        self.possibility_table = pd.DataFrame(data).set_index(keys="index", drop=True)
+        print(self.possibility_table)
+
+    def create_tokens(self, words: list[list[str]]) -> None:
+        all_words = []
+        for words_list in words:
+            all_words += words_list
+        self._tokenize_words(all_words)
 
     @staticmethod 
     def _parse_comment(comment: str) -> tuple[list[str], Optional[Mark]]:
@@ -116,4 +131,15 @@ class CommentManager:
         return result
     
     def test_comments(self, comments):
-        pass
+        for comment in comments:
+            assume = {}
+            for mark in iter(Mark):
+                assume[mark] = self.possibility_table.loc['all', mark.value] 
+            words, mark = self._parse_comment(comment)
+            for word in words: 
+                for mark in iter(Mark):
+                    assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
+            
+            best_mark = max(assume, key=assume.get)
+            print(best_mark.value)
+            
