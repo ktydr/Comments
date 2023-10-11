@@ -27,18 +27,16 @@ class CommentManager:
     def create_possibility_table(self, comments) -> None:
         appeared = {}
         for comment in comments:
-            words, mark = self.parse_comment(comment)
+            words, mark = self._parse_comment(comment)
             for word in words:
-                for mark in iter(Mark):
-                    token = self.tokens[word]
-                    if (token, mark) not in appeared:
-                        appeared[(token, mark)] = 0
-                    appeared[(token, mark)] += 1
+                token = self.tokens[word]
+                if (token, mark) not in appeared:
+                    appeared[(token, mark)] = 0
+                appeared[(token, mark)] += 1
         
         data = []    
         token_values = list(set(self.tokens.values()))
         for token in token_values:
-            # summarized = prob0 = prob1 = prob2 = 0
             sum = 0
             for mark in iter(Mark):
                 if (token, mark) not in appeared:
@@ -54,7 +52,7 @@ class CommentManager:
             
             data.append(row)
             
-        self.create_possibility_table = pd.DataFrame(data=data, index=token_values)
+        self.possibility_table = pd.DataFrame(data=data, index=token_values)
 
 
     def create_tokens(self, comments: list[str]) -> None:
