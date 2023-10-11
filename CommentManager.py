@@ -45,19 +45,21 @@ class CommentManager:
         # create the possibility table
         possibility_factor = self.config["possibility_factor"]
         token_values = list(set(self.tokens.values()))
-        table_index = ['all'] + token_values
+        table_index = ['all', 'not_given'] + token_values
         for mark in iter(Mark):
             mark_amount[mark.value] /= words_amount
         table_data = {}
 
         for mark in iter(Mark):
-            table_data[mark.value] = [mark_amount[mark.value]]
+            table_data[mark.value] = [
+                mark_amount[mark.value],
+                1/(mark_amount[mark.value] + len(token_values)) * possibility_factor
+            ]
             for token in token_values:
                 if (token, mark) not in appeared:
                     appeared[(token, mark)] = 0
                 # laplace smoothing
-                p = (appeared[(token, mark)] + 1) / \
-                    (mark_amount[mark.value] + len(token_values))
+                p = (appeared[(token, mark)] + 1) / (mark_amount[mark.value] + len(token_values))
                 p *= possibility_factor
                 table_data[mark.value].append(p)
 
@@ -136,9 +138,11 @@ class CommentManager:
             words, mark = self._parse_comment(comment)
             for word in words:
                 for mark in iter(Mark):
-                    if word not in self.tokens:
-                        continue
-                    assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
+                    if word in self.tokens:
+                        p = self.possibility_table.loc[self.tokens[word], mark.value]
+                    else:
+                        p = self.possibility_table.loc["not_given", mark.value]
+                    assume[mark] *= p
 
             # generate statistics
             assume_sum = sum(list(assume.values()))
