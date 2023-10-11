@@ -26,7 +26,7 @@ def fetch_comments():
     test_file = open('testComments.txt', 'r')
     test_comments = test_file.readlines()
     test_comments = [comment for comment in test_comments if comment != '\n']
-    test_comments.close()
+    test_file.close()
 
     return (training_comments, test_comments)
 
