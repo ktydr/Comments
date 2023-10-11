@@ -137,6 +137,12 @@ class CommentManager:
                         continue
                     assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
             
+            # generate statistics
+            assume_sum = sum(list(assume.values()))
+            for mark, value in assume.items():
+                print(f'{mark.value}: {round(value/assume_sum, 1) * 100} %')
+
             best_mark = max(assume, key=assume.get)
             print(best_mark.value)
+            print('\n')
             
