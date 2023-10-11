@@ -17,7 +17,12 @@ class CommentManager:
                 "min_common_prefix": 2,
                 "min_dice_coef": 0.7
             },
-            "possibility_factor": 1000
+            "possibility_factor": 1000,
+            "mark_possibility": {
+                Mark.NEGATIVE: 0.4,
+                Mark.NEUTRAL: 0.2,
+                Mark.POSITIVE: 0.4
+            }
         }
 
     def learn_from_comments(self, comments: list[str]) -> None:
@@ -52,7 +57,7 @@ class CommentManager:
 
         for mark in iter(Mark):
             table_data[mark.value] = [
-                mark_amount[mark.value],
+                self.config["mark_possibility"][mark],
                 1/(mark_amount[mark.value] + len(token_values)) * possibility_factor
             ]
             for token in token_values:
