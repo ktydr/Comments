@@ -13,6 +13,12 @@ class CommentManager:
     def __init__(self):
         self.tokens = dict()
         self.possibility_table = pd.DataFrame()
+        self.config = {
+            "tokenize": {
+                "min_common_prefix": 2,
+                "min_dice_coef": 0.7
+            }
+        }
 
     def learn_from_comments(self, comments: list[str]) -> None:
         self.create_tokens(comments)
@@ -45,7 +51,7 @@ class CommentManager:
         for idx, word in enumerate(words):
             for j in range(idx):
                 prev_word = words[j]
-                if CommentManager._are_similar(word, prev_word):
+                if self._are_similar(word, prev_word):
                     if word in self.tokens:
                         self.tokens[prev_word] = self.tokens[word]  # unite all similar words under one token
                     else:
@@ -56,8 +62,9 @@ class CommentManager:
         print(self.tokens)
         return 
 
-    @staticmethod
-    def _are_similar(word: str, prev_word: str, min_common_prefix: int=2, min_dice_coef: float=0.6) -> bool:
+    def _are_similar(self, word: str, prev_word: str) -> bool:
+        min_common_prefix = self.config["tokenize"]["min_common_prefix"]
+        min_dice_coef = self.config["tokenize"]["min_dice_coef"]
         # use short circuit logic
         if word[:min_common_prefix] != prev_word[:min_common_prefix] or \
            bool(re.search(r"\d", word)) or bool(re.search(r"\d", prev_word)):
