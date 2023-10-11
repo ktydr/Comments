@@ -74,11 +74,12 @@ class CommentManager:
     @staticmethod
     def _parse_comment(comment: str) -> tuple[list[str], Optional[Mark]]:
         words = re.findall(r"[a-z0-9äöüß]+", comment.lower())
-        try:
+        mark = re.findall(r"#[a-z0-9äöüß]+$", comment.lower())
+        if mark:
             mark = Mark(words[-1])
             words.pop()
             return words, mark
-        except:
+        else:
             return words, None
 
     def _tokenize_words(self, words: list[str]) -> None:
