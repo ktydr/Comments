@@ -72,11 +72,11 @@ class CommentManager:
     @staticmethod
     def _parse_comment(comment: str) -> tuple[list[str], Optional[Mark]]:
         words = re.findall(r"[a-z0-9äöüß]+", comment.lower())
-        marks = re.findall(r"^#[a-z0-9äöüß]+", comment.lower())
+        marks = re.findall(r"#[a-z0-9äöüß]+$", comment.lower())
         try:
             if marks:
-                mark = Mark(words[0])
-                words.pop(0)
+                mark = Mark(words[-1])
+                words.pop()
                 return words, mark
         except:
             return words, None
