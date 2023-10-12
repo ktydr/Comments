@@ -15,13 +15,13 @@ class CommentManager:
         self.config = {
             "tokenize": {
                 "min_common_prefix": 2,
-                "min_dice_coef": 0.7
+                "min_dice_coef": 0.9
             },
             "possibility_factor": 1000,
             "mark_possibility": {
-                Mark.NEGATIVE: 0.4,
-                Mark.NEUTRAL: 0.2,
-                Mark.POSITIVE: 0.4
+                Mark.NEGATIVE: 0.3,
+                Mark.NEUTRAL: 0.4,
+                Mark.POSITIVE: 0.3
             }
         }
 
