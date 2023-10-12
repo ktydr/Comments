@@ -35,11 +35,9 @@ class CommentManager:
         mark_amount = {}
         for mark in iter(Mark):
             mark_amount[mark.value] = 0
-
+        
         appeared = {}
-        words_amount = 0
         for words, mark in parse_results:
-            words_amount += len(words)
             for word in words:
                 token = self.tokens[word]
                 if (token, mark) not in appeared:
@@ -50,16 +48,10 @@ class CommentManager:
         # create the possibility table
         possibility_factor = self.config["possibility_factor"]
         token_values = list(set(self.tokens.values()))
-        table_index = ['all', 'not_given'] + token_values
-        for mark in iter(Mark):
-            mark_amount[mark.value] /= words_amount
         table_data = {}
 
         for mark in iter(Mark):
-            table_data[mark.value] = [
-                self.config["mark_possibility"][mark],
-                1/(mark_amount[mark.value] + len(token_values)) * possibility_factor
-            ]
+            table_data[mark.value] = []
             for token in token_values:
                 if (token, mark) not in appeared:
                     appeared[(token, mark)] = 0
@@ -68,8 +60,7 @@ class CommentManager:
                 p *= possibility_factor
                 table_data[mark.value].append(p)
 
-        self.possibility_table = pd.DataFrame(
-            data=table_data, index=table_index)
+        self.possibility_table = pd.DataFrame(data=table_data, index=token_values)
         print(self.possibility_table)
 
     def create_tokens(self, words: list[list[str]]) -> None:
@@ -139,15 +130,13 @@ class CommentManager:
         for comment in comments:
             assume = {}
             for mark in iter(Mark):
-                assume[mark] = self.possibility_table.loc['all', mark.value]
+                assume[mark] = self.config['mark_possibility'][mark]
             words, mark = self._parse_comment(comment)
             for word in words:
                 for mark in iter(Mark):
-                    if word in self.tokens:
-                        p = self.possibility_table.loc[self.tokens[word], mark.value]
-                    else:
-                        p = self.possibility_table.loc["not_given", mark.value]
-                    assume[mark] *= p
+                    if word not in self.tokens:
+                        continue
+                    assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
 
             # generate statistics
             assume_sum = sum(list(assume.values()))
