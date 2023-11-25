@@ -15,7 +15,7 @@ class CommentManager:
         self.config = {
             "tokenize": {
                 "min_common_prefix": 2,
-                "min_dice_coef": 0.9
+                "min_dice_coef": 0.8
             },
             "possibility_factor": 1000,
             "mark_possibility": {
