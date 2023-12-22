@@ -11,7 +11,7 @@ from Mark import Mark
 
 class CommentManager:
 
-    ### public interface methods (use in this order!)
+    ### public interface methods
 
     def __init__(self, **kwargs):
         self.tokens = None
@@ -53,6 +53,7 @@ class CommentManager:
             self._create_possibility_table(parse_results)
             CommentManager._store_object(self.tokens, self.config["tokens_file"])
             CommentManager._store_object(self.possibility_table, self.config["possibility_table_file"])
+        self.print_inner_state()
 
     def comments_predict(self, comments_path : str):
         if self.tokens is None and self.possibility_table is None:
@@ -71,11 +72,14 @@ class CommentManager:
                         assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value] * self.config['mark_possibility'][mark]
 
                 # generate statistics
+                print(comment) 
+
                 assume_sum = sum(list(assume.values()))
                 for mark, value in assume.items():
                     print(f'{mark.value}: {round(value/assume_sum * 100, 1)} %')
 
-                best_mark = max(assume, key=assume.get)           
+                best_mark = max(assume, key=assume.get) 
+         
                 print(f'=> {best_mark.value}')
                 print('\n')
 
@@ -154,8 +158,30 @@ class CommentManager:
         except Exception as e:
             print("Impossible to evauluate the programm predict! Actual error:\n" + str(e))
 
-    # private inner methods
+    def print_inner_state(self):
+        if self.tokens is None or self.possibility_table is None:
+            print('No inner state: please train the manager!')
+            return
+        
+        print('Comment Manager state:')
 
+        print('Tokens for each word:')
+        print('(token is a number; is considered as a comment attribute)')
+        for index, (word, token) in enumerate(self.tokens.items()):
+            if index >= 50:
+                print('...')
+                break
+            print(f'\t{word}: {token}')
+        print('\n')
+
+        print('The trained possibility table:')
+        print('(each entry is a factor for the attribute (token) to be with a comment mark above)')
+        print(self.possibility_table.head(20))
+        print('...')
+        print('\n\n')
+
+    # private inner methods
+        
     def _create_possibility_table(self, parse_results) -> None:
         # init mark_amount dictionary
         mark_amount = {}
