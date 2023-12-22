@@ -4,6 +4,7 @@ from typing import Optional, Any
 import pandas as pd
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 
 from Mark import Mark
 
@@ -75,7 +76,7 @@ class CommentManager:
                     print(f'{mark.value}: {round(value/assume_sum * 100, 1)} %')
 
                 best_mark = max(assume, key=assume.get)           
-                print(best_mark.value)
+                print(f'=> {best_mark.value}')
                 print('\n')
 
                 # write results
@@ -98,7 +99,7 @@ class CommentManager:
                     'amount_in_solutions': 0,
                     'amount_correct': 0
                 }
-            # calulate stats
+            # calulate basic stats
             for result_mark, solution_mark in mark_compare_pairs:
                 if result_mark is None or solution_mark is None:
                     raise Exception('Comment mark can not be None!')
@@ -106,7 +107,7 @@ class CommentManager:
                 stats[solution_mark]['amount_in_solutions'] += 1
                 if result_mark == solution_mark:
                     stats[result_mark]['amount_correct'] += 1  # stats[result_mark] is the same as stats[solution_mark]
-            # calculate precision, recall and f-score
+            # calculate stats: precision, recall and f-score
             for mark in iter(Mark):
                 if stats[mark]['amount_in_results'] == 0:
                     stats[mark]['precision'] = 1
@@ -119,12 +120,37 @@ class CommentManager:
                 if stats[mark]['precision'] == 0 and stats[mark]['recall'] == 0:
                     stats[mark]['f-score'] = 0
                 else:
-                    stats[mark]['f-score'] = (2 * stats[mark]['precision'] * stats[mark]['recall']) / (stats[mark]['precision'] + stats[mark]['recall'])
-                print(f'{mark.value}:')
-                print(f'precision: {stats[mark]['precision']}')
-                print(f'recall: {stats[mark]['recall']}')
-                print(f'f-score: {stats[mark]['f-score']}')
-                print('\n')
+                    stats[mark]['f-score'] = (2 * stats[mark]['precision'] * stats[mark]['recall']) / (stats[mark]['precision'] + stats[mark]['recall']) 
+            # print stats
+            print("Prediction evaluation stats: ")
+            for mark in iter(Mark):
+                print(f'{mark.name} mark: ')
+                for key, value in stats[mark].items():
+                    print(f'\t{key}: {value}')
+            # generate and show visual statistics
+            attributes = [('precision', 'Genauigkeit'),
+                        ('recall', 'Treffquote'),
+                        ('f-score', 'F-Maß')]
+            fig, axis = plt.subplots(1, len(attributes))
+            fig.tight_layout()
+            fig.canvas.manager.set_window_title('Einschätzung der Vorhersage')
+            for index, attr in enumerate(attributes):
+                attr_key, attr_name = attr
+                x_names = []
+                x_values = []
+                for mark in iter(Mark):
+                    x_names.append(mark.value)
+                    x_values.append(stats[mark][attr_key] * 100)
+                x_names.append('Mittelwert')
+                x_values.append(sum(x_values) / len(x_values))
+                
+                axis[index].bar(x_names, x_values,
+                    label=[f'{round(val, 1)} %' for val in x_values],
+                    color=['tab:red', 'tab:orange', 'tab:green', 'tab:blue'])
+                axis[index].set_ylabel(f'{attr_name} in %')
+                axis[index].set_title(f'{attr_name} für jede mögliche Bewertung')
+                axis[index].legend(title='Genaue Werte')
+            plt.show()
         except Exception as e:
             print("Impossible to evauluate the programm predict! Actual error:\n" + str(e))
 
