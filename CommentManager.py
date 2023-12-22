@@ -220,10 +220,10 @@ class CommentManager:
         self.possibility_table = pd.DataFrame(data=table_data, index=token_values)
         return
 
-    def _create_tokens(self, words: list[list[str]]) -> None:
+    def _create_tokens(self, comment_words: list[list[str]]) -> None:
 
         words = []
-        for words_list in words:
+        for words_list in comment_words:
             words += words_list
         words.sort()
 
