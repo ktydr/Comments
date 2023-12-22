@@ -60,6 +60,7 @@ class CommentManager:
             raise Exception('Error: the comment manager has not been trained yet!')
         comments = CommentManager._read_comments_from_file(comments_path)
         with open(self.config['results_file'], 'w') as results_file:
+            print('Predictions:\n')
             for comment in comments:
                 assume = {}
                 for mark in iter(Mark):
@@ -68,8 +69,12 @@ class CommentManager:
                 for word in words:
                     for mark in iter(Mark):
                         if word not in self.tokens:
-                            continue
-                        assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value] * self.config['mark_possibility'][mark]
+                            token = self._tokenize(word)
+                            if token is None:
+                                continue
+                        else:
+                            token = self.tokens[word]
+                        assume[mark] *= self.possibility_table.loc[token, mark.value] * self.config['mark_possibility'][mark]
 
                 # generate statistics
                 print(comment) 
@@ -152,7 +157,7 @@ class CommentManager:
                     label=[f'{round(val, 1)} %' for val in x_values],
                     color=['tab:red', 'tab:orange', 'tab:green', 'tab:blue'])
                 axis[index].set_ylabel(f'{attr_name} in %')
-                axis[index].set_title(f'{attr_name} für jede mögliche Bewertung')
+                axis[index].set_title(attr_name)
                 axis[index].legend(title='Genaue Werte')
             plt.show()
         except Exception as e:
@@ -213,18 +218,17 @@ class CommentManager:
                 table_data[mark.value].append(p)
 
         self.possibility_table = pd.DataFrame(data=table_data, index=token_values)
-        print(self.possibility_table)
+        return
 
     def _create_tokens(self, words: list[list[str]]) -> None:
-        all_words = []
-        for words_list in words:
-            all_words += words_list
-        self._tokenize_words(all_words)
 
-    def _tokenize_words(self, words: list[str]) -> None:
+        words = []
+        for words_list in words:
+            words += words_list
+        words.sort()
+
         self.tokens = dict()
 
-        words.sort()
         token_id = 1
         for idx, word in enumerate(words):
             for j in range(idx):
@@ -239,8 +243,14 @@ class CommentManager:
             if word not in self.tokens:
                 self.tokens[word] = token_id
                 token_id += 1
-        print(self.tokens)
+
+        # retrieve token groups from self.tokens
+        
+
         return
+
+    def _tokenize(self, word : str) -> Optional[int]:
+        return None
 
     def _are_similar(self, word: str, prev_word: str) -> bool:
         min_common_prefix = self.config["tokenize"]["min_common_prefix"]
