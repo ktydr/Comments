@@ -4,22 +4,25 @@ def main():
 
     manager = CommentManager()
 
-    training_comments, test_comments = fetch_comments()
+    manager.learn_from_comments(
+        read_comments_from_file('trainingComments.txt')
+    )
 
-    manager.learn_from_comments(training_comments)
+    manager.comments_predict(
+        read_comments_from_file('testComments.txt')
+    )
 
-    manager.comments_predict(test_comments)
+    CommentManager.evaluate_predict(
+        read_comments_from_file('testResults.txt'),
+        read_comments_from_file('testSolutions.txt')
+    )
+
+    
     
     """
     while True:
         manager.input_comment()
     """
-     
-def fetch_comments():
-    # fetch training comments
-    training_comments = read_comments_from_file('trainingComments.txt')
-    test_comments = read_comments_from_file('testComments.txt')
-    return (training_comments, test_comments)
 
 def read_comments_from_file(path: str) -> list[str]:
     file = open(path, 'r') 
