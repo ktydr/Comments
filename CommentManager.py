@@ -10,68 +10,64 @@ from Mark import Mark
 
 class CommentManager:
 
-    # public interface methods
+    ### public interface methods (use in this order!)
 
-    def __init__(self):
-        self.tokens = dict()
-        self.possibility_table = pd.DataFrame()
+    def __init__(self, **kwargs):
+        self.tokens = None
+        self.possibility_table = None
+        # set default config
         self.config = {
             "tokens_file": "stored_data/tokens.txt",
             "possibility_table_file": "stored_data/p_table.txt",
             "results_file": "stored_data/testResults.txt",
             "tokenize": {
                 "min_common_prefix": 2,
-                "min_dice_coef": 0.8
+                "min_dice_coef": 1  # each word becomes a token
             },
             "possibility_factor": 1000,
-            "mark_possibility": {
-                Mark.NEGATIVE: 0.11,
-                Mark.NEUTRAL: 0.8,
-                Mark.POSITIVE: 0.09
+            "mark_possibility": { # equal factors
+                Mark.NEGATIVE: 1,
+                Mark.NEUTRAL: 1,
+                Mark.POSITIVE: 1
             }
         }
-
-    @staticmethod
-    def read_comments_from_file(path: str) -> list[str]:
-        file = open(path, 'r') 
-        comments = file.readlines()
-        file.close()
-        # filter comments
-        comments = [comment.strip() for comment in comments]
-        comments = [comment for comment in comments if comment]
-        return comments
+        # overwrite config items with kwargs 
+        for key, value in kwargs.items():
+            self.config[key] = value
 
     def learn_from_comments(self, comments_path : str, relearn : bool = False) -> None:
-        comments = CommentManager.read_comments_from_file(comments_path)
+        comments = CommentManager._read_comments_from_file(comments_path)
         try:
             if relearn:
                 raise Exception('Start relearning')
             # try to load tokens and possibility_table
             self.tokens = CommentManager._load_object(self.config["tokens_file"])
             self.possibility_table = CommentManager._load_object(self.config["possibility_table_file"])
-            print('Tokens and possibility table loaded from the stored files')
+            print('Tokens and possibility_table loaded from the stored files')
         except Exception as e:
             print('Start learning from training comments')
             # learn from comments logic
             parse_results = [self._parse_comment(comment) for comment in comments]
-            self.create_tokens([words for words, mark in parse_results])
-            self.create_possibility_table(parse_results)
+            self._create_tokens([words for words, mark in parse_results])
+            self._create_possibility_table(parse_results)
             CommentManager._store_object(self.tokens, self.config["tokens_file"])
             CommentManager._store_object(self.possibility_table, self.config["possibility_table_file"])
 
     def comments_predict(self, comments_path : str):
-        comments = CommentManager.read_comments_from_file(comments_path)
+        if self.tokens is None and self.possibility_table is None:
+            raise Exception('Error: the comment manager has not been trained yet!')
+        comments = CommentManager._read_comments_from_file(comments_path)
         with open(self.config['results_file'], 'w') as results_file:
             for comment in comments:
                 assume = {}
                 for mark in iter(Mark):
-                    assume[mark] = self.config['mark_possibility'][mark]
+                    assume[mark] = 1 
                 words, mark = self._parse_comment(comment)
                 for word in words:
                     for mark in iter(Mark):
                         if word not in self.tokens:
                             continue
-                        assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
+                        assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value] * self.config['mark_possibility'][mark]
 
                 # generate statistics
                 assume_sum = sum(list(assume.values()))
@@ -85,19 +81,9 @@ class CommentManager:
                 # write results
                 results_file.write(f'{comment} #{best_mark.value}\n\n')
     
-    @staticmethod 
-    def _load_object(file_path : str) -> Any:
-        with open(file_path, 'rb') as object_file:
-            return pickle.load(object_file)
-        
-    @staticmethod 
-    def _store_object(obj : Any, file_path : str) -> None:
-        with open(file_path, 'wb') as object_file:
-            return pickle.dump(obj, object_file)
-
     def evaluate_predict(self, solution_comments_path):
-        result_comments = CommentManager.read_comments_from_file(self.config["results_file"])
-        solution_comments = CommentManager.read_comments_from_file(solution_comments_path)
+        result_comments = CommentManager._read_comments_from_file(self.config["results_file"])
+        solution_comments = CommentManager._read_comments_from_file(solution_comments_path)
         try:
             # init mark pairs to compare
             mark_compare_pairs = list(zip(
@@ -141,11 +127,10 @@ class CommentManager:
                 print('\n')
         except Exception as e:
             print("Impossible to evauluate the programm predict! Actual error:\n" + str(e))
-        
 
     # private inner methods
 
-    def create_possibility_table(self, parse_results) -> None:
+    def _create_possibility_table(self, parse_results) -> None:
         # init mark_amount dictionary
         mark_amount = {}
         for mark in iter(Mark):
@@ -178,25 +163,14 @@ class CommentManager:
         self.possibility_table = pd.DataFrame(data=table_data, index=token_values)
         print(self.possibility_table)
 
-    def create_tokens(self, words: list[list[str]]) -> None:
+    def _create_tokens(self, words: list[list[str]]) -> None:
         all_words = []
         for words_list in words:
             all_words += words_list
         self._tokenize_words(all_words)
 
-    @staticmethod
-    def _parse_comment(comment: str) -> tuple[list[str], Optional[Mark]]:
-        words = re.findall(r"[a-z0-9äöüß]+", comment.lower())
-        marks = re.findall(r"#[a-z0-9äöüß]+$", comment.lower())
-        if marks:
-                mark = Mark(words[-1])
-                words.pop()
-                return words, mark
-        else:
-            return words, None
-
     def _tokenize_words(self, words: list[str]) -> None:
-        self.tokens = {}
+        self.tokens = dict()
 
         words.sort()
         token_id = 1
@@ -227,6 +201,19 @@ class CommentManager:
             return True
         return False
 
+    ### static helper methods
+
+    @staticmethod
+    def _parse_comment(comment: str) -> tuple[list[str], Optional[Mark]]:
+        words = re.findall(r"[a-z0-9äöüß]+", comment.lower())
+        marks = re.findall(r"#[a-z0-9äöüß]+$", comment.lower())
+        if marks:
+                mark = Mark(words[-1])
+                words.pop()
+                return words, mark
+        else:
+            return words, None
+
     @staticmethod
     def _dice(word: str, prev_word: str) -> float:  # modified dice coefficient
         # get trigrams of word
@@ -241,6 +228,23 @@ class CommentManager:
             result = 0
         return result
 
+    @staticmethod
+    def _read_comments_from_file(path: str) -> list[str]:
+        with open(path, 'r') as file:
+            comments = file.readlines()
+        # filter comments
+        comments = [comment.strip() for comment in comments]
+        comments = [comment for comment in comments if comment]
+        return comments
+
+    @staticmethod 
+    def _load_object(file_path : str) -> Any:
+        with open(file_path, 'rb') as object_file:
+            return pickle.load(object_file)
         
+    @staticmethod 
+    def _store_object(obj : Any, file_path : str) -> None:
+        with open(file_path, 'wb') as object_file:
+            return pickle.dump(obj, object_file)    
             
 
