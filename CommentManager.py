@@ -1,8 +1,9 @@
 import re
-from typing import Optional
+from typing import Optional, Any
 
 import pandas as pd
 import numpy as np
+import pickle
 
 from Mark import Mark
 
@@ -15,7 +16,9 @@ class CommentManager:
         self.tokens = dict()
         self.possibility_table = pd.DataFrame()
         self.config = {
-            "results_file": "testResults.txt",
+            "tokens_file": "stored_data/tokens.txt",
+            "possibility_table_file": "stored_data/p_table.txt",
+            "results_file": "stored_data/testResults.txt",
             "tokenize": {
                 "min_common_prefix": 2,
                 "min_dice_coef": 0.8
@@ -28,41 +31,73 @@ class CommentManager:
             }
         }
 
-    def learn_from_comments(self, comments: list[str]) -> None:
-        parse_results = [self._parse_comment(comment) for comment in comments]
-        self.create_tokens([words for words, mark in parse_results])
-        self.create_possibility_table(parse_results)
-
-    def comments_predict(self, comments):
-        results_file = open(self.config['results_file'], 'w') 
-
-        for comment in comments:
-            assume = {}
-            for mark in iter(Mark):
-                assume[mark] = self.config['mark_possibility'][mark]
-            words, mark = self._parse_comment(comment)
-            for word in words:
-                for mark in iter(Mark):
-                    if word not in self.tokens:
-                        continue
-                    assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
-
-            # generate statistics
-            assume_sum = sum(list(assume.values()))
-            for mark, value in assume.items():
-                print(f'{mark.value}: {round(value/assume_sum * 100, 1)} %')
-
-            best_mark = max(assume, key=assume.get)           
-            print(best_mark.value)
-            print('\n')
-
-            # write results
-            results_file.write(f'{comment} #{best_mark.value}\n\n')
-
-        results_file.close()
-
     @staticmethod
-    def evaluate_predict(result_comments, solution_comments):
+    def read_comments_from_file(path: str) -> list[str]:
+        file = open(path, 'r') 
+        comments = file.readlines()
+        file.close()
+        # filter comments
+        comments = [comment.strip() for comment in comments]
+        comments = [comment for comment in comments if comment]
+        return comments
+
+    def learn_from_comments(self, comments_path : str, relearn : bool = False) -> None:
+        comments = CommentManager.read_comments_from_file(comments_path)
+        try:
+            if relearn:
+                raise Exception('Start relearning')
+            # try to load tokens and possibility_table
+            self.tokens = CommentManager._load_object(self.config["tokens_file"])
+            self.possibility_table = CommentManager._load_object(self.config["possibility_table_file"])
+            print('Tokens and possibility table loaded from the stored files')
+        except Exception as e:
+            print('Start learning from training comments')
+            # learn from comments logic
+            parse_results = [self._parse_comment(comment) for comment in comments]
+            self.create_tokens([words for words, mark in parse_results])
+            self.create_possibility_table(parse_results)
+            CommentManager._store_object(self.tokens, self.config["tokens_file"])
+            CommentManager._store_object(self.possibility_table, self.config["possibility_table_file"])
+
+    def comments_predict(self, comments_path : str):
+        comments = CommentManager.read_comments_from_file(comments_path)
+        with open(self.config['results_file'], 'w') as results_file:
+            for comment in comments:
+                assume = {}
+                for mark in iter(Mark):
+                    assume[mark] = self.config['mark_possibility'][mark]
+                words, mark = self._parse_comment(comment)
+                for word in words:
+                    for mark in iter(Mark):
+                        if word not in self.tokens:
+                            continue
+                        assume[mark] *= self.possibility_table.loc[self.tokens[word], mark.value]
+
+                # generate statistics
+                assume_sum = sum(list(assume.values()))
+                for mark, value in assume.items():
+                    print(f'{mark.value}: {round(value/assume_sum * 100, 1)} %')
+
+                best_mark = max(assume, key=assume.get)           
+                print(best_mark.value)
+                print('\n')
+
+                # write results
+                results_file.write(f'{comment} #{best_mark.value}\n\n')
+    
+    @staticmethod 
+    def _load_object(file_path : str) -> Any:
+        with open(file_path, 'rb') as object_file:
+            return pickle.load(object_file)
+        
+    @staticmethod 
+    def _store_object(obj : Any, file_path : str) -> None:
+        with open(file_path, 'wb') as object_file:
+            return pickle.dump(obj, object_file)
+
+    def evaluate_predict(self, solution_comments_path):
+        result_comments = CommentManager.read_comments_from_file(self.config["results_file"])
+        solution_comments = CommentManager.read_comments_from_file(solution_comments_path)
         try:
             # init mark pairs to compare
             mark_compare_pairs = list(zip(
