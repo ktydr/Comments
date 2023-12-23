@@ -62,7 +62,7 @@ class CommentManager:
         if self.tokens is None and self.possibility_table is None:
             raise Exception('Error: the comment manager has not been trained yet!')
         comments = CommentManager._read_comments_from_file(comments_path)
-        with open(self.config['results_file'], 'w') as results_file:
+        with open(self.config['results_file'], 'w', encoding="utf-8") as results_file:
             print('Predictions:\n')
             for comment in comments:
                 assume = {}
@@ -337,7 +337,7 @@ class CommentManager:
 
     @staticmethod
     def _read_comments_from_file(path: str) -> list[str]:
-        with open(path, 'r') as file:
+        with open(path, 'r', encoding="utf-8") as file:
             comments = file.readlines()
         # filter comments
         comments = [comment.strip() for comment in comments]
