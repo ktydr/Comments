@@ -19,7 +19,8 @@ class CommentManager:
         # set default config
         self.config = {
             "tokens_file": "stored_data/tokens.txt",
-            "possibility_table_file": "stored_data/p_table.txt",
+            "leader_tokens_file": "stored_data/leader_tokens.txt",
+            "possibility_table_file": "stored_data/possibility_table.txt",
             "results_file": "stored_data/testResults.txt",
             "tokenize": {
                 "min_common_prefix": 2,
@@ -43,15 +44,17 @@ class CommentManager:
                 raise Exception('Start relearning')
             # try to load tokens and possibility_table
             self.tokens = CommentManager._load_object(self.config["tokens_file"])
+            self.leader_tokens = CommentManager._load_object(self.config["leader_tokens_file"])
             self.possibility_table = CommentManager._load_object(self.config["possibility_table_file"])
             print('Tokens and possibility_table loaded from the stored files')
         except Exception as e:
             print('Start learning from training comments')
             # learn from comments logic
             parse_results = [self._parse_comment(comment) for comment in comments]
-            self._create_tokens([words for words, mark in parse_results])
+            self._create_tokens([words for words, _ in parse_results])
             self._create_possibility_table(parse_results)
             CommentManager._store_object(self.tokens, self.config["tokens_file"])
+            CommentManager._store_object(self.leader_tokens, self.config["leader_tokens_file"])
             CommentManager._store_object(self.possibility_table, self.config["possibility_table_file"])
         self.print_inner_state()
 
@@ -67,13 +70,13 @@ class CommentManager:
                     assume[mark] = 1 
                 words, mark = self._parse_comment(comment)
                 for word in words:
+                    if word not in self.tokens:
+                        token = self._tokenize(word)
+                        if token is None:
+                            continue
+                    else:
+                        token = self.tokens[word]
                     for mark in iter(Mark):
-                        if word not in self.tokens:
-                            token = self._tokenize(word)
-                            if token is None:
-                                continue
-                        else:
-                            token = self.tokens[word]
                         assume[mark] *= self.possibility_table.loc[token, mark.value] * self.config['mark_possibility'][mark]
 
                 # generate statistics
@@ -240,7 +243,7 @@ class CommentManager:
                 if self._are_similar(leader_word, word):
                     group_value += count
                     group_words.append(word)
-            word_groups.append((group_value, group_words))  # group value, similar words to leader_word
+            word_groups.append((group_value, group_words, leader_word))  # group value, similar words to leader_word
 
         def compare_groups(group1, group2):
             if group1[0] > group2[0]:
@@ -254,26 +257,37 @@ class CommentManager:
             return 0
         
         self.tokens = dict()
+        self.leader_tokens = dict()
         to_assign = len(word_entries.keys())
         token_id = 1
         while to_assign > 0:
             word_groups.sort(key=functools.cmp_to_key(compare_groups))
-            assign_words = word_groups[0][1]
+            _, assign_words, leader_word = word_groups[0]
+            self.leader_tokens[leader_word] = token_id
             for word in assign_words:
                 self.tokens[word] = token_id
             token_id += 1
             to_assign -= len(assign_words)
             rebuild_word_groups = []
-            for _, group_words in word_groups:
+            for _, group_words, leader_word in word_groups:
                 rebuild_group_words = [word for word in group_words if word not in assign_words]
                 if rebuild_group_words:
                     rebuild_group_value = sum([word_entries[word] for word in rebuild_group_words])
-                    rebuild_word_groups.append((rebuild_group_value, rebuild_group_words))  # group value, similar words to leader_word
+                    rebuild_word_groups.append((rebuild_group_value, rebuild_group_words, leader_word))  # group value, similar words to leader_word
             word_groups = rebuild_word_groups
        
         return
 
     def _tokenize(self, word : str) -> Optional[int]:
+        INF = 1e18
+        best_token = INF
+
+        for leader_word, token in self.leader_tokens.items():
+            if (self._are_similar(word, leader_word)):
+                best_token = min(best_token, token) # the most valuable token possesses the smallest tokend_id
+
+        if best_token != INF:
+            return best_token
         return None
 
     def _are_similar(self, word: str, prev_word: str) -> bool:
