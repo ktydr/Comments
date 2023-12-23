@@ -236,6 +236,7 @@ class CommentManager:
             word_entries[word] += 1
 
         word_groups = []
+        word_groups_data = []
         for leader_word in word_entries.keys():
             group_value = 0
             group_words = []
@@ -243,16 +244,17 @@ class CommentManager:
                 if self._are_similar(leader_word, word):
                     group_value += count
                     group_words.append(word)
-            word_groups.append((group_value, group_words, leader_word))  # group value, similar words to leader_word
+            word_groups.append((group_value, len(word_groups_data), leader_word))  # group value, group data index
+            word_groups_data.append(group_words) #  similar words to leader_word
 
         def compare_groups(group1, group2):
             if group1[0] > group2[0]:
                 return -1
             if group1[0] < group2[0]:
                 return 1
-            if len(group1[1]) > len(group2[1]):
+            if len(word_groups_data[group1[1]]) > len(word_groups_data[group2[1]]):
                 return -1
-            if len(group1[1]) < len(group2[1]):
+            if len(word_groups_data[group1[1]]) < len(word_groups_data[group2[1]]):
                 return 1
             return 0
         
@@ -262,18 +264,21 @@ class CommentManager:
         token_id = 1
         while to_assign > 0:
             word_groups.sort(key=functools.cmp_to_key(compare_groups))
-            _, assign_words, leader_word = word_groups[0]
+            _, word_groups_data_index, leader_word = word_groups[0]
+            assign_words = word_groups_data[word_groups_data_index]
             self.leader_tokens[leader_word] = token_id
             for word in assign_words:
                 self.tokens[word] = token_id
             token_id += 1
             to_assign -= len(assign_words)
             rebuild_word_groups = []
-            for _, group_words, leader_word in word_groups:
-                rebuild_group_words = [word for word in group_words if word not in assign_words]
+            for _, word_groups_data_index, leader_word in word_groups:
+                rebuild_group_words = [word for word in word_groups_data[word_groups_data_index]
+                                        if word not in assign_words]
+                word_groups_data[word_groups_data_index] = rebuild_group_words
                 if rebuild_group_words:
                     rebuild_group_value = sum([word_entries[word] for word in rebuild_group_words])
-                    rebuild_word_groups.append((rebuild_group_value, rebuild_group_words, leader_word))  # group value, similar words to leader_word
+                    rebuild_word_groups.append((rebuild_group_value, word_groups_data_index, leader_word))  # group value, similar words to leader_word
             word_groups = rebuild_word_groups
        
         return
