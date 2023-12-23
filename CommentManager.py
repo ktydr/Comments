@@ -1,8 +1,8 @@
+import functools
 import re
 from typing import Optional, Any
 
 import pandas as pd
-import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
@@ -23,7 +23,7 @@ class CommentManager:
             "results_file": "stored_data/testResults.txt",
             "tokenize": {
                 "min_common_prefix": 2,
-                "min_dice_coef": 1  # each word becomes a token
+                "min_dice_coef": 1  # with 1 each word becomes a token
             },
             "possibility_factor": 1000,
             "mark_possibility": { # equal factors
@@ -225,34 +225,60 @@ class CommentManager:
         words = []
         for words_list in comment_words:
             words += words_list
-        words.sort()
 
-        self.tokens = dict()
+        word_entries = {}
+        for word in words:
+            if word not in word_entries:
+                word_entries[word] = 0
+            word_entries[word] += 1
 
-        token_id = 1
-        for idx, word in enumerate(words):
-            for j in range(idx):
-                prev_word = words[j]
-                if self._are_similar(word, prev_word):
-                    if word in self.tokens:
-                        # unite all similar words under one token
-                        self.tokens[prev_word] = self.tokens[word]
-                    else:
-                        # inherit the token from the similar word
-                        self.tokens[word] = self.tokens[prev_word]
-            if word not in self.tokens:
-                self.tokens[word] = token_id
-                token_id += 1
+        word_groups = []
+        for leader_word in word_entries.keys():
+            group_value = 0
+            group_words = []
+            for word, count  in word_entries.items():
+                if self._are_similar(leader_word, word):
+                    group_value += count
+                    group_words.append(word)
+            word_groups.append((group_value, group_words))  # group value, similar words to leader_word
 
-        # retrieve token groups from self.tokens
+        def compare_groups(group1, group2):
+            if group1[0] > group2[0]:
+                return -1
+            if group1[0] < group2[0]:
+                return 1
+            if len(group1[1]) > len(group2[1]):
+                return -1
+            if len(group1[1]) < len(group2[1]):
+                return 1
+            return 0
         
-
+        self.tokens = dict()
+        to_assign = len(word_entries.keys())
+        token_id = 1
+        while to_assign > 0:
+            word_groups.sort(key=functools.cmp_to_key(compare_groups))
+            assign_words = word_groups[0][1]
+            for word in assign_words:
+                self.tokens[word] = token_id
+            token_id += 1
+            to_assign -= len(assign_words)
+            rebuild_word_groups = []
+            for _, group_words in word_groups:
+                rebuild_group_words = [word for word in group_words if word not in assign_words]
+                if rebuild_group_words:
+                    rebuild_group_value = sum([word_entries[word] for word in rebuild_group_words])
+                    rebuild_word_groups.append((rebuild_group_value, rebuild_group_words))  # group value, similar words to leader_word
+            word_groups = rebuild_word_groups
+       
         return
 
     def _tokenize(self, word : str) -> Optional[int]:
         return None
 
     def _are_similar(self, word: str, prev_word: str) -> bool:
+        if word == prev_word:
+            return True
         min_common_prefix = self.config["tokenize"]["min_common_prefix"]
         min_dice_coef = self.config["tokenize"]["min_dice_coef"]
         # use short circuit logic
@@ -279,9 +305,9 @@ class CommentManager:
     @staticmethod
     def _dice(word: str, prev_word: str) -> float:  # modified dice coefficient
         # get trigrams of word
-        t1 = {word[i-2: i] for i in range(2, len(word))}
+        t1 = {word[i-2: i+1] for i in range(2, len(word))}
         # get trigrams of prev_word
-        t2 = {prev_word[i-2: i] for i in range(2, len(prev_word))}
+        t2 = {prev_word[i-2: i+1] for i in range(2, len(prev_word))}
         # calculate the dice coefficient
         try:
             # original dice_coef = 2*len(t1.intersection(t2)) / (len(t1) + len(t2))
