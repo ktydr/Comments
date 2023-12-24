@@ -1,5 +1,8 @@
 # ignore temporary files
-stored_data/*
+stored_data/tokens.txt
+stored_data/leader_tokens.txt
+stored_data/possibility_table.txt
+stored_data/testResults.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

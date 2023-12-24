@@ -1,0 +1,1 @@
+This folder contains training comments, test comments and test solutions, which can be passed to CommentManager methods
