@@ -527,13 +527,15 @@ class CommentManager:
             float: the dice cofficient of two words in [0, 1]
         """
         # build trigrams of word1
-        t1 = {word1[i-2: i+1] for i in range(2, len(word1))}
+        t1 = [word1[i-2: i+1] for i in range(2, len(word1))]
         # build trigrams of word2
-        t2 = {word2[i-2: i+1] for i in range(2, len(word2))}
+        t2 = [word2[i-2: i+1] for i in range(2, len(word2))]
+        # find common trigrams
+        t_common = [item for item in t1 if item in t2]
 
         try: 
             # calculate the dice coefficient
-            result = 2*len(t1.intersection(t2)) / (len(t1) + len(t2))
+            result = (2*len*t_common) / (len(t1) + len(t2))
         except:  # catch 0 division
             result = 0  # handle zero division as dice 0
 
